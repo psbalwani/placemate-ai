@@ -260,8 +260,8 @@ export default function ProfilePage() {
                     <span className="w-40 shrink-0 truncate text-sm text-foreground">{skill.name}</span>
                     <Slider
                       min={1} max={5} step={1}
-                      value={skill.level}
-                      onValueChange={(v) => updateSkillLevel(skill.name, v)}
+                      value={[skill.level]}
+                      onValueChange={(v) => updateSkillLevel(skill.name, v[0])}
                       className="flex-1"
                     />
                     <span className="w-6 text-center text-sm font-semibold text-primary">{skill.level}</span>
@@ -288,8 +288,8 @@ export default function ProfilePage() {
               <Slider
                 id="hours-slider"
                 min={5} max={40} step={5}
-                value={hoursPerWeek}
-                onValueChange={setHoursPerWeek}
+                value={[hoursPerWeek]}
+                onValueChange={([v]) => setHoursPerWeek(v)}
               />
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>5h (casual)</span>

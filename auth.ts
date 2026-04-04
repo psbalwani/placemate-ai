@@ -45,9 +45,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     session({ session, token }) {
       if (token) {
-        session.user.id = token.id;
-        session.user.role = token.role;
-        session.user.institute_id = token.institute_id;
+        session.user.id = typeof token.id === 'string' ? token.id : '';
+        session.user.role = typeof token.role === 'string' ? token.role : 'student';
+        session.user.institute_id = typeof token.institute_id === 'string' ? token.institute_id : null;
       }
       return session;
     },

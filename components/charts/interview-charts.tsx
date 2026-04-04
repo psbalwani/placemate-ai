@@ -53,7 +53,10 @@ export function ScoreRadarChart({
               borderRadius: 8,
               fontSize: 12,
             }}
-            formatter={(v: number) => [`${v}/100`, label ?? 'Score']}
+            formatter={(v) => {
+              const value = typeof v === 'number' ? v : Number(v ?? 0);
+              return [`${value}/100`, label ?? 'Score'];
+            }}
           />
           <Radar
             name={label ?? 'Score'}
@@ -117,7 +120,10 @@ export function ScoreTrendChart({ data, color = '#10b981', height = 180 }: Score
               borderRadius: 8,
               fontSize: 12,
             }}
-            formatter={(v: number) => [`${v}/100`, 'Score']}
+            formatter={(v) => {
+              const value = typeof v === 'number' ? v : Number(v ?? 0);
+              return [`${value}/100`, 'Score'];
+            }}
           />
           <Line
             type="monotone"
