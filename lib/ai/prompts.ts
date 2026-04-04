@@ -128,33 +128,38 @@ You are having a real human conversation, not reading a script. Act like a real 
 
 QUESTION TYPE RULES:
 - "main": a new topic question — COUNTS toward the ${totalQ} total
-- "followup": probing the SAME topic — does NOT count toward total, previous_score = 0, multi_score = null
-- "transition": acknowledgement + moving on (can be combined with next main question)
+- "followup": a probe on the SAME topic — does NOT count toward total. On follow-ups: previous_score MUST be 0 and multi_score MUST be null.
+- "transition": acknowledgement + moving on (usually combined with the next main question)
 
-Use 1-2 follow-ups per main question maximum. If 2 follow-ups haven't helped, move on.
+Use 1-2 follow-ups per main question maximum.
 
-SCORING (only on "main" type, 0-10 each):
-- technical: correctness, depth, real knowledge
-- clarity: communication quality, conciseness
-- structure: logical flow, STAR for HR, step-by-step for tech
-- confidence: assertiveness, avoids excessive hedging
-- relevance: actually addresses the question
+SCORING — CRITICAL RULES:
+- Scores are ONLY set when question_type is "main" or "transition" (i.e. when you move away from a topic).
+- previous_score is the score for the ENTIRE recently completed topic (includes the main answer AND any follow-ups).
+- previous_score is an INTEGER from 1-10. NEVER return 0 for a main/transition (0 is only valid on the very first question when there is no previous answer).
+- Even a poor answer deserves a score of 1-3 — 0 means "not answered at all".
+- multi_score: all 5 dimensions must sum to reflect the same quality as previous_score × 2.
+
+EXAMPLES:
+- User gave a good answer → previous_score: 7, multi_score: {technical:7, clarity:7, structure:7, confidence:8, relevance:7}
+- User gave a vague answer → previous_score: 4, multi_score: {technical:3, clarity:4, structure:4, confidence:4, relevance:5}
+- User said "I don't know" → previous_score: 2, multi_score: {technical:1, clarity:3, structure:2, confidence:2, relevance:2}
 
 Output ONLY this JSON for every response (no markdown, no text outside):
 {
   "question_type": "main",
   "next_question": "your natural question or response here",
-  "feedback_on_previous": "specific feedback (empty string for very first question)",
+  "feedback_on_previous": "specific feedback on their answer (empty string only for the very first question)",
   "previous_score": 0,
   "multi_score": { "technical": 0, "clarity": 0, "structure": 0, "confidence": 0, "relevance": 0 },
   "is_complete": false,
   "overall_result": null
 }
 
-Set "is_complete": true and fill overall_result ONLY after all ${totalQ} MAIN questions answered:
+Set "is_complete": true and fill overall_result ONLY after all ${totalQ} MAIN questions have been scored:
 {
   "score": 0,
-  "summary": "conversational summary of their performance",
+  "summary": "conversational summary of their overall performance",
   "strengths": ["strength 1"],
   "weaknesses": ["improvement area 1"],
   "avg_multi_score": { "technical": 0, "clarity": 0, "structure": 0, "confidence": 0, "relevance": 0 }
@@ -185,7 +190,7 @@ export function buildTrainingPlanPrompt(input: GenerateTrainingPlanInput): strin
     .map(([skill, pct]) => `${skill} (${pct}% weak)`)
     .join(', ');
 
-  return `You are a placement training coordinator.
+  return `You are an expert CRT (Campus Recruitment Training) coordinator for a tier-2/3 engineering college in India.
 
 Cohort statistics:
 - Branch: ${input.branch}, Batch: ${input.batch}
@@ -196,8 +201,75 @@ Cohort statistics:
 - Top skill gaps: ${gapList}
 - Top target roles: ${input.top_roles.join(', ')}
 
-Generate a structured 4-week group training plan to improve placement readiness.
-Each week: focus_area, activities (array), expected_improvement.
+Generate a 4-week intensive cohort training plan targeting the above gaps.
 
-Output ONLY valid JSON array of 4 week objects.`;
+Each week MUST have:
+- "week": week number 1-4
+- "topics": string[] — specific topics to cover (3-5)
+- "activities": string[] — concrete exercises/tasks (3-4)
+- "suggested_format": one of "lecture" | "lab" | "workshop" | "peer-session"
+- "focus_areas": string[] — 2-3 keywords (e.g. "DSA", "System Design", "Communication")
+
+Output ONLY a valid JSON array of exactly 4 week objects. No markdown, no explanation.`;
+}
+
+// --- 6. JD Parsing ---
+export function buildJDParsePrompt(jdText: string): string {
+  return `You are an expert technical recruiter. Parse the following Job Description and extract structured information.
+
+JD TEXT:
+${jdText}
+
+Return a JSON object with these exact keys:
+{
+  "required_skills": string[],         // must-have technical skills/tech stack
+  "preferred_skills": string[],        // nice-to-have skills
+  "role_category": string,             // one of: "service_MNC" | "product_SDE" | "data_analyst" | "devops" | "frontend" | "fullstack" | "other"
+  "eligibility_hints": {
+    "branches": string[],              // e.g. ["CSE", "IT", "ECE"]
+    "min_cgpa": number | null,         // e.g. 6.5 or null if not mentioned
+    "batch_year": string | null        // e.g. "2025" or null if not mentioned
+  },
+  "role_summary": string               // 1-sentence plain English summary of the role
+}
+
+Output ONLY valid JSON. No markdown, no explanation.`;
+}
+
+// --- 7. Shortlist Explanation ---
+export function buildShortlistExplanationPrompt(
+  studentProfile: {
+    name: string;
+    branch: string;
+    cgpa_band: string;
+    skills_json: Array<{ name: string; level: number }>;
+    ats_score: number | null;
+    interview_score: number | null;
+    target_role: string | null;
+  },
+  parsedJd: {
+    required_skills: string[];
+    preferred_skills: string[];
+    role_category: string;
+  },
+  driveScore: number
+): string {
+  const skillNames = studentProfile.skills_json.map((s) => s.name).join(', ');
+  const required = parsedJd.required_skills.join(', ');
+
+  return `You are a placement officer writing a 1-sentence shortlist reason for a student.
+
+Student: ${studentProfile.name} | Branch: ${studentProfile.branch} | CGPA Band: ${studentProfile.cgpa_band}
+Skills: ${skillNames}
+ATS Score: ${studentProfile.ats_score ?? 'N/A'}/100
+Interview Score: ${studentProfile.interview_score ?? 'N/A'}/100
+Drive Score: ${driveScore}/100
+
+JD Required Skills: ${required}
+Role Category: ${parsedJd.role_category}
+
+Write a 1-2 sentence factual explanation of why this student was shortlisted (or has a lower rank). 
+Start with the strongest relevant fact. Be concise and specific.
+
+Output ONLY the explanation text, no JSON, no markdown.`;
 }

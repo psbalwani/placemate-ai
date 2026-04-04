@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     });
 
     const [plan] = await sql`
-      INSERT INTO tpo_training_plans (institute_id, created_by, filters_json, cohort_stats, plan_json)
+      INSERT INTO tpo_training_plans (institute_id, created_by, filters_json, cohort_stats_json, plan_json)
       VALUES (${instituteId}, ${session.user.id}, ${JSON.stringify(filters ?? {})}::jsonb, ${JSON.stringify(stats)}::jsonb, ${JSON.stringify(weeks)}::jsonb)
       RETURNING *
     `;

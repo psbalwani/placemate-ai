@@ -1,10 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { FilterDisclosure, type FilterItem } from '@/components/ui/filter-disclosure';
 import { Loader2, Search, Users, TrendingUp, FileText, MessageSquare } from 'lucide-react';
+import {
+  PiTreeStructureBold,
+  PiMonitorBold,
+  PiCircuitryBold,
+  PiWrenchBold,
+  PiGearBold,
+  PiBuildingsBold,
+  PiGridFourBold,
+} from 'react-icons/pi';
+import type { IconType } from 'react-icons';
 
 interface Student {
   id: string;
@@ -23,6 +34,18 @@ function ScoreBadge({ score }: { score?: number }) {
   return <span className={`font-semibold text-sm ${color}`}>{score}</span>;
 }
 
+/* Map branch names → react-icons */
+const BRANCH_ICONS: Record<string, IconType> = {
+  CSE: PiCircuitryBold,
+  IT: PiMonitorBold,
+  ECE: PiGearBold,
+  EE: PiWrenchBold,
+  ME: PiWrenchBold,
+  CE: PiBuildingsBold,
+  CH: PiGearBold,
+};
+const DEFAULT_ICON: IconType = PiGridFourBold;
+
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,14 +60,24 @@ export default function StudentsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const branches = [...new Set(students.map((s) => s.branch).filter(Boolean))] as string[];
+
+  /* Build FilterDisclosure items — all + per branch */
+  const filterItems: FilterItem[] = [
+    { id: '', label: 'All Branches', icon: PiTreeStructureBold },
+    ...branches.map((b) => ({
+      id: b,
+      label: b,
+      icon: BRANCH_ICONS[b] ?? DEFAULT_ICON,
+    })),
+  ];
+
   const filtered = students.filter((s) => {
     const q = search.toLowerCase();
     const matchSearch = !q || s.full_name?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q) || s.target_role?.toLowerCase().includes(q);
     const matchBranch = !branchFilter || s.branch === branchFilter;
     return matchSearch && matchBranch;
   });
-
-  const branches = [...new Set(students.map((s) => s.branch).filter(Boolean))] as string[];
 
   const withATS = students.filter((s) => s.ats_score != null).length;
   const withInterview = students.filter((s) => s.interview_score != null).length;
@@ -88,8 +121,8 @@ export default function StudentsPage() {
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row">
+      {/* Search + FilterDisclosure */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -100,16 +133,30 @@ export default function StudentsPage() {
             className="pl-9"
           />
         </div>
-        <select
-          value={branchFilter}
-          onChange={(e) => setBranchFilter(e.target.value)}
-          className="rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:outline-none"
-          id="branch-filter"
-        >
-          <option value="">All Branches</option>
-          {branches.map((b) => <option key={b} value={b}>{b}</option>)}
-        </select>
+
+        {/* Watermelon FilterDisclosure — replaces the native <select> */}
+        {filterItems.length > 1 && (
+          <FilterDisclosure
+            items={filterItems}
+            defaultActiveId=""
+            onChange={(id) => setBranchFilter(id)}
+          />
+        )}
       </div>
+
+      {/* Active filter label */}
+      {branchFilter && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Filtering by:</span>
+          <Badge
+            variant="secondary"
+            className="text-xs cursor-pointer"
+            onClick={() => setBranchFilter('')}
+          >
+            {branchFilter} ✕
+          </Badge>
+        </div>
+      )}
 
       {/* Table */}
       <Card>
@@ -186,7 +233,7 @@ export default function StudentsPage() {
                 <Users className="mx-auto mb-3 h-12 w-12 text-muted-foreground/30" />
                 <p className="text-sm font-medium text-foreground">No students found</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {search ? 'Try a different search term' : 'Students will appear here after signing up'}
+                  {search || branchFilter ? 'Try a different filter' : 'Students will appear here after signing up'}
                 </p>
               </div>
             )}

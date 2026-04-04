@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Sparkles, Map, FileText, MessageSquare, BarChart3, ArrowRight, CheckCircle2, Star, Zap, Shield, Users } from 'lucide-react';
+import {
+  Sparkles, Map, FileText, MessageSquare, BarChart3,
+  ArrowRight, CheckCircle2, Star, Zap, Shield, Users, Heart,
+} from 'lucide-react';
+import { DotGrid } from '@/components/landing/dot-grid-dynamic';
 
 export const metadata: Metadata = {
   title: 'Placemate AI – Your AI-Powered Campus Placement Co-Pilot',
@@ -76,16 +80,11 @@ const HOW_IT_WORKS = [
   { step: '04', title: 'Land Your Dream Job', desc: 'Walk into placements confident, prepared, and ready to impress.' },
 ];
 
-const HERO_PARTICLES = Array.from({ length: 20 }, (_, i) => ({
-  left: (i * 37) % 100,
-  top: (i * 53) % 100,
-  delay: ((i * 17) % 30) / 10,
-}));
-
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[oklch(0.1_0.015_260)] text-white overflow-hidden">
-      {/* ─── Navigation ──────────────────────────────────────── */}
+
+      {/* ── Navigation ──────────────────────────────────────── */}
       <nav className="fixed top-0 z-50 w-full border-b border-white/5 bg-[oklch(0.1_0.015_260)]/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2.5">
@@ -100,48 +99,42 @@ export default function LandingPage() {
             <a href="#testimonials" className="hover:text-white transition-colors">Stories</a>
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="hidden text-sm text-slate-400 hover:text-white transition-colors sm:block"
-            >
+            <Link href="/login" className="hidden text-sm text-slate-400 hover:text-white transition-colors sm:block">
               Sign in
             </Link>
-            <Link
-              href="/register"
-              id="hero-cta-nav"
-              className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors"
-            >
+            <Link href="/register" id="hero-cta-nav"
+              className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors">
               Get Started Free
             </Link>
           </div>
         </div>
       </nav>
 
-      {/* ─── Hero ────────────────────────────────────────────── */}
+      {/* ── Hero ────────────────────────────────────────────── */}
       <section className="relative flex min-h-screen flex-col items-center justify-center px-6 pt-24 pb-16 text-center">
-        {/* Background glows */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute left-1/2 top-1/3 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/8 blur-[120px]" />
-          <div className="absolute right-1/4 bottom-1/4 h-[400px] w-[400px] rounded-full bg-teal-500/6 blur-[100px]" />
-          <div className="absolute left-1/4 bottom-1/3 h-[300px] w-[300px] rounded-full bg-blue-500/5 blur-[80px]" />
-        </div>
 
-        {/* Orbiting dots */}
+        {/* Interactive DotGrid — covers entire hero */}
+        <DotGrid
+          dotSize={4}
+          gap={18}
+          baseColor="#1a1f35"
+          activeColor="#10b981"
+          proximity={130}
+          shockRadius={280}
+          shockStrength={6}
+          resistance={800}
+          returnDuration={1.5}
+        />
+
+        {/* Gradient overlays — keeps text readable */}
         <div className="pointer-events-none absolute inset-0">
-          {HERO_PARTICLES.map((p, i) => (
-            <div
-              key={i}
-              className="absolute h-1 w-1 rounded-full bg-white/20"
-              style={{
-                left: `${p.left}%`,
-                top: `${p.top}%`,
-                animationDelay: `${p.delay}s`,
-              }}
-            />
-          ))}
+          <div className="absolute inset-0 bg-[oklch(0.1_0.015_260)]/50" />
+          <div className="absolute left-1/2 top-1/3 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/10 blur-[120px]" />
+          <div className="absolute right-1/4 bottom-1/4 h-[400px] w-[400px] rounded-full bg-teal-500/6 blur-[100px]" />
         </div>
 
-        <div className="relative max-w-4xl animate-fade-in">
+        {/* Content */}
+        <div className="relative z-10 max-w-4xl animate-fade-in">
           {/* Badge */}
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5 text-xs font-medium text-emerald-400">
             <Zap className="h-3 w-3" />
@@ -163,42 +156,30 @@ export default function LandingPage() {
 
           {/* CTAs */}
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Link
-              href="/register"
-              id="hero-cta-primary"
-              className="group flex items-center gap-2 rounded-2xl bg-emerald-600 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all hover:shadow-emerald-500/30 hover:scale-105"
-            >
+            <Link href="/register" id="hero-cta-primary"
+              className="group flex items-center gap-2 rounded-2xl bg-emerald-600 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all hover:shadow-emerald-500/30 hover:scale-105">
               Start for Free
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
-            <Link
-              href="/login"
-              id="hero-cta-secondary"
-              className="rounded-2xl border border-white/10 px-8 py-4 text-base font-medium text-slate-300 hover:bg-white/5 hover:border-white/20 transition-all"
-            >
+            <Link href="/login" id="hero-cta-secondary"
+              className="rounded-2xl border border-white/10 px-8 py-4 text-base font-medium text-slate-300 hover:bg-white/5 hover:border-white/20 transition-all">
               Sign In →
             </Link>
           </div>
 
-          {/* Social proof */}
+          {/* Trust */}
           <div className="mt-10 flex items-center justify-center gap-6 text-sm text-slate-500">
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              No credit card required
-            </div>
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              Free tier available
-            </div>
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              Setup in 2 minutes
-            </div>
+            {['No credit card required', 'Free tier available', 'Setup in 2 minutes'].map((t) => (
+              <div key={t} className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                {t}
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Stats band */}
-        <div className="relative mt-20 w-full max-w-4xl">
+        <div className="relative z-10 mt-20 w-full max-w-4xl">
           <div className="rounded-2xl border border-white/8 bg-white/3 px-8 py-6 backdrop-blur-sm">
             <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
               {STATS.map(({ value, label }) => (
@@ -212,7 +193,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── Features ────────────────────────────────────────── */}
+      {/* ── Features ────────────────────────────────────────── */}
       <section id="features" className="relative py-24 px-6">
         <div className="mx-auto max-w-7xl">
           <div className="mb-16 text-center">
@@ -229,24 +210,17 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map(({ icon: Icon, title, description, color, badge }) => (
-              <div
-                key={title}
-                className="group relative overflow-hidden rounded-2xl border border-white/8 bg-white/3 p-6 transition-all hover:border-white/15 hover:bg-white/6 hover:-translate-y-1"
-              >
-                {/* Gradient orb */}
+              <div key={title}
+                className="group relative overflow-hidden rounded-2xl border border-white/8 bg-white/3 p-6 transition-all hover:border-white/15 hover:bg-white/6 hover:-translate-y-1">
                 <div className={`absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br ${color} opacity-10 blur-2xl transition-opacity group-hover:opacity-20`} />
-
                 <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${color} p-0.5`}>
                   <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-[oklch(0.1_0.015_260)]">
                     <Icon className="h-5 w-5 text-white" />
                   </div>
                 </div>
-
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <h3 className="text-base font-bold text-white">{title}</h3>
-                  <span className="shrink-0 rounded-full border border-white/10 px-2 py-0.5 text-xs text-slate-400">
-                    {badge}
-                  </span>
+                  <span className="shrink-0 rounded-full border border-white/10 px-2 py-0.5 text-xs text-slate-400">{badge}</span>
                 </div>
                 <p className="text-sm leading-relaxed text-slate-400">{description}</p>
               </div>
@@ -255,7 +229,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── How It Works ────────────────────────────────────── */}
+      {/* ── How It Works ────────────────────────────────────── */}
       <section id="how-it-works" className="py-24 px-6">
         <div className="mx-auto max-w-4xl">
           <div className="mb-16 text-center">
@@ -267,26 +241,35 @@ export default function LandingPage() {
             </h2>
           </div>
 
-          <div className="relative space-y-8">
-            {/* Connect line */}
-            <div className="absolute left-6 top-8 h-[calc(100%-4rem)] w-px bg-gradient-to-b from-emerald-500/50 via-teal-500/30 to-transparent sm:left-8" />
+          {/* No more absolute line — each row owns its circle + connector */}
+          <div className="flex flex-col">
+            {HOW_IT_WORKS.map(({ step, title, desc }, index) => (
+              <div key={step} className="flex gap-6">
 
-            {HOW_IT_WORKS.map(({ step, title, desc }) => (
-              <div key={step} className="relative flex items-start gap-6 pl-2 sm:pl-4">
-                <div className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-sm font-black text-emerald-400">
-                  {step}
+                {/* Left column: circle + vertical connector line */}
+                <div className="flex flex-col items-center">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-emerald-500/40 bg-[#0a1a12] text-sm font-black text-emerald-400 shadow-[0_0_18px_rgba(16,185,129,0.18)]">
+                    {step}
+                  </div>
+                  {/* Line fills remaining vertical space between this circle and the next */}
+                  {index < HOW_IT_WORKS.length - 1 && (
+                    <div className="mt-1 w-px flex-1 bg-gradient-to-b from-emerald-500/50 via-emerald-500/20 to-transparent" style={{ minHeight: '2rem' }} />
+                  )}
                 </div>
-                <div className="pb-4 pt-2">
+
+                {/* Right column: text content */}
+                <div className={`min-w-0 flex-1 pt-2 ${index < HOW_IT_WORKS.length - 1 ? 'pb-10' : 'pb-2'}`}>
                   <h3 className="text-lg font-bold text-white">{title}</h3>
                   <p className="mt-1 text-sm text-slate-400">{desc}</p>
                 </div>
+
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── Testimonials ────────────────────────────────────── */}
+      {/* ── Testimonials ────────────────────────────────────── */}
       <section id="testimonials" className="py-24 px-6">
         <div className="mx-auto max-w-6xl">
           <div className="mb-16 text-center">
@@ -298,20 +281,21 @@ export default function LandingPage() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 sm:grid-rows-[1fr]">
             {TESTIMONIALS.map(({ name, role, college, text, rating }) => (
-              <div
-                key={name}
-                className="rounded-2xl border border-white/8 bg-white/3 p-6 transition-all hover:border-white/15"
-              >
+              <div key={name}
+                className="flex flex-col rounded-2xl border border-white/8 bg-white/3 p-6 transition-all hover:border-white/15">
+                {/* Stars */}
                 <div className="mb-4 flex gap-0.5">
                   {Array.from({ length: rating }).map((_, i) => (
                     <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
-                <p className="text-sm leading-relaxed text-slate-300 italic">&ldquo;{text}&rdquo;</p>
-                <div className="mt-5 flex items-center gap-3 border-t border-white/8 pt-5">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20 text-sm font-bold text-emerald-400">
+                {/* Quote — clamped to 5 lines so cards are always uniform height */}
+                <p className="flex-1 text-sm leading-relaxed text-slate-300 italic line-clamp-5">&ldquo;{text}&rdquo;</p>
+                {/* Author — border-t always at same depth because flex-1 absorbs variable quote height */}
+                <div className="mt-6 flex items-center gap-3 border-t border-white/8 pt-5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-sm font-bold text-emerald-400">
                     {name[0]}
                   </div>
                   <div>
@@ -325,7 +309,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── CTA ─────────────────────────────────────────────── */}
+      {/* ── CTA ─────────────────────────────────────────────── */}
       <section className="py-24 px-6">
         <div className="mx-auto max-w-3xl text-center">
           <div className="relative overflow-hidden rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent p-12">
@@ -344,11 +328,8 @@ export default function LandingPage() {
                 Join thousands of engineering students using AI to prepare smarter, not harder.
               </p>
               <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-                <Link
-                  href="/register"
-                  id="bottom-cta"
-                  className="group flex items-center gap-2 rounded-2xl bg-emerald-600 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all hover:scale-105"
-                >
+                <Link href="/register" id="bottom-cta"
+                  className="group flex items-center gap-2 rounded-2xl bg-emerald-600 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all hover:scale-105">
                   Start Free Today
                   <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Link>
@@ -362,15 +343,15 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── Footer ──────────────────────────────────────────── */}
+      {/* ── Footer ──────────────────────────────────────────── */}
       <footer className="border-t border-white/5 py-10 px-6">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 sm:flex-row">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-emerald-400" />
             <span className="text-sm font-semibold text-white">Placemate AI</span>
           </div>
-          <p className="text-xs text-slate-600">
-            © {new Date().getFullYear()} Placemate AI · Built with ❤️ for Indian engineering students
+          <p className="flex items-center gap-1.5 text-xs text-slate-600">
+            © {new Date().getFullYear()} Placemate AI · Built with <Heart className="h-3 w-3 fill-red-500 text-red-500" /> for Indian engineering students
           </p>
           <div className="flex items-center gap-4 text-xs text-slate-600">
             <a href="/login" className="hover:text-slate-400 transition-colors">Login</a>
@@ -378,6 +359,7 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Upload, FileText, Sparkles, Loader2, CheckCircle2, XCircle,
-  AlertTriangle, ArrowUp, ChevronRight, RotateCcw, Copy, Check,
+  AlertTriangle, ArrowUp, ChevronRight, RotateCcw, Copy, Check, PenLine,
 } from 'lucide-react';
 
 interface ResumeFeedback {
@@ -297,7 +297,11 @@ export default function ResumePage() {
                   mode === m ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {m === 'upload' ? '📄 Upload PDF' : '✏️ Paste Text'}
+                <div className="flex items-center justify-center gap-2">
+                  {m === 'upload'
+                    ? <><Upload className="h-4 w-4" /> Upload PDF</>
+                    : <><PenLine className="h-4 w-4" /> Paste Text</>}
+                </div>
               </button>
             ))}
           </div>

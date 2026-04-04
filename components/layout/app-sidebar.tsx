@@ -15,6 +15,7 @@ import {
   Users,
   TrendingUp,
   History,
+  Briefcase,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { signOut } from 'next-auth/react';
@@ -32,10 +33,10 @@ const BOTTOM_NAV = [
   { href: '/profile', label: 'Profile', icon: User },
 ];
 
-const ADMIN_NAV = [
-  { href: '/admin', label: 'Overview', icon: BarChart3 },
+const TPO_NAV = [
+  { href: '/admin', label: 'Dashboard', icon: BarChart3 },
+  { href: '/admin/drives', label: 'Placement Drives', icon: Briefcase },
   { href: '/admin/students', label: 'Students', icon: Users },
-  { href: '/admin/analytics', label: 'Analytics', icon: TrendingUp },
 ];
 
 interface AppSidebarProps {
@@ -47,7 +48,8 @@ interface AppSidebarProps {
 export function AppSidebar({ role = 'student', userName, userEmail }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const navItems = role === 'student' ? STUDENT_NAV : ADMIN_NAV;
+  const navItems = role === 'student' ? STUDENT_NAV : TPO_NAV;
+
 
   async function handleSignOut() {
     await signOut({ callbackUrl: '/login' });
@@ -87,33 +89,7 @@ export function AppSidebar({ role = 'student', userName, userEmail }: AppSidebar
           );
         })}
 
-        {/* TPO can also access student features */}
-        {role === 'tpo' && (
-          <>
-            <div className="my-3 border-t border-white/8" />
-            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-              My Tools
-            </p>
-            {STUDENT_NAV.map(({ href, label, icon: Icon }) => {
-              const isActive = pathname === href;
-              return (
-                <Link
-                  key={`tpo-${href}`}
-                  href={href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
-                    isActive
-                      ? 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20'
-                      : 'text-slate-300 hover:bg-white/8 hover:text-white'
-                  )}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {label}
-                </Link>
-              );
-            })}
-          </>
-        )}
+
       </nav>
 
       {/* Bottom */}
@@ -148,6 +124,7 @@ export function AppSidebar({ role = 'student', userName, userEmail }: AppSidebar
               onClick={handleSignOut}
               className="rounded-lg p-1 text-slate-500 hover:bg-white/10 hover:text-white transition-colors"
               title="Sign out"
+              suppressHydrationWarning
             >
               <LogOut className="h-4 w-4" />
             </button>

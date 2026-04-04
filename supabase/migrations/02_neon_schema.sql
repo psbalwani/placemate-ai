@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS tpo_training_plans (
   institute_id UUID REFERENCES institutes(id) ON DELETE CASCADE,
   created_by UUID REFERENCES users(id) ON DELETE SET NULL,
   filters_json JSONB DEFAULT '{}',
-  cohort_stats JSONB DEFAULT '{}',
+  cohort_stats_json JSONB DEFAULT '{}',
   plan_json JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now()
 );

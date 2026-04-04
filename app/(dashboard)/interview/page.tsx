@@ -16,7 +16,7 @@ import {
   Mic, MicOff, RotateCcw, User, Bot, Camera, CameraOff,
   Code2, Users, Building2, Rocket, Briefcase, ChevronRight,
   ChevronLeft, Lightbulb, AlertTriangle, TrendingUp, History,
-  Zap, Volume2, VolumeX,
+  Zap, Volume2, VolumeX, Trophy, ThumbsUp,
 } from 'lucide-react';
 
 /* --- Types --- */
@@ -94,6 +94,10 @@ export default function InterviewPage() {
   const [error, setError] = useState('');
   const [totalQuestions, setTotalQuestions] = useState(6);
   const [currentAIQuestion, setCurrentAIQuestion] = useState('');
+
+  /* early finish */
+  const [showFinishConfirm, setShowFinishConfirm] = useState(false);
+  const [finishingEarly, setFinishingEarly] = useState(false);
 
   /* voice/camera */
   const [listening, setListening] = useState(false);
@@ -407,7 +411,30 @@ export default function InterviewPage() {
     setInterviewId(null); interviewIdRef.current = null;
     setMessages([]); setQuestionScores([]);
     setAnswer(''); setLiveTranscript(''); setResult(null);
-    setError(''); setHints([]); setCurrentAIQuestion(''); setStep(1);
+    setError(''); setHints([]); setCurrentAIQuestion('');
+    setShowFinishConfirm(false); setFinishingEarly(false);
+    setStep(1);
+  }
+
+  async function finishEarly() {
+    if (!interviewIdRef.current) return;
+    setFinishingEarly(true);
+    stopVoice(); stopSpeaking();
+    try {
+      const res = await fetch('/api/mock-interview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'finish_early', interview_id: interviewIdRef.current }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error ?? 'Failed to finish');
+      setResult(data.overall_result);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not finish interview');
+    } finally {
+      setFinishingEarly(false);
+      setShowFinishConfirm(false);
+    }
   }
 
   useEffect(() => { if (result) stopVoice(); }, [result]);
@@ -425,7 +452,27 @@ export default function InterviewPage() {
 
   /* ── RESULTS ─────────────────────────────────────────────────────────── */
   if (result) {
-    const trendData = [...previousScores, { label: 'Now', score: result.score }];
+    // Build trend: prefer history, fall back to per-question scores so chart always renders
+    const trendData =
+      previousScores.length > 0
+        ? [...previousScores, { label: 'Now', score: result.score }]
+        : questionScores.length >= 2
+          ? questionScores.map((qs, i) => ({ label: `Q${i + 1}`, score: qs.score * 10 }))
+          : null;
+
+    // Compute avg_multi_score from per-question scores if the AI didn't return one
+    const DIMS = ['technical', 'clarity', 'structure', 'confidence', 'relevance'] as const;
+    const effectiveMultiScore = result.avg_multi_score ?? (() => {
+      const withMulti = questionScores.filter(q => q.multi_score);
+      if (withMulti.length === 0) return null;
+      return Object.fromEntries(
+        DIMS.map(d => [
+          d,
+          Math.round(withMulti.reduce((s, q) => s + (q.multi_score?.[d as keyof typeof q.multi_score] ?? 0), 0) / withMulti.length)
+        ])
+      ) as { technical: number; clarity: number; structure: number; confidence: number; relevance: number };
+    })();
+
     return (
       <div className="mx-auto max-w-4xl space-y-6 animate-fade-in">
         <div className="relative overflow-hidden rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-card to-card p-8 text-center">
@@ -438,20 +485,25 @@ export default function InterviewPage() {
             <p className="mt-2 text-muted-foreground max-w-lg mx-auto">{result.summary}</p>
             <div className="mt-3 flex items-center justify-center gap-2">
               <Badge variant={result.score >= 70 ? 'default' : 'secondary'} className="text-sm px-3 py-1">
-                {result.score >= 75 ? '🏆 Excellent' : result.score >= 55 ? '👍 Good' : '📈 Keep Practicing'}
+                {result.score >= 75
+                  ? <span className="flex items-center gap-1.5"><Trophy className="h-3.5 w-3.5" /> Excellent</span>
+                  : result.score >= 55
+                  ? <span className="flex items-center gap-1.5"><ThumbsUp className="h-3.5 w-3.5" /> Good</span>
+                  : <span className="flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5" /> Keep Practicing</span>}
               </Badge>
             </div>
           </div>
         </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {result.avg_multi_score && (
+          {/* Radar chart — always show if we have multi-dim data */}
+          {effectiveMultiScore ? (
             <Card><CardHeader className="pb-2"><h3 className="text-sm font-semibold">Performance Breakdown</h3></CardHeader>
-              <CardContent><ScoreRadarChart score={result.avg_multi_score} color="#10b981" size={220} /></CardContent>
+              <CardContent><ScoreRadarChart score={effectiveMultiScore} color="#10b981" size={220} /></CardContent>
             </Card>
-          )}
+          ) : null}
           <Card><CardHeader className="pb-2"><h3 className="text-sm font-semibold flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" />Score Trend</h3></CardHeader>
             <CardContent>
-              {trendData.length > 1 ? <ScoreTrendChart data={trendData} height={200} /> :
+              {trendData ? <ScoreTrendChart data={trendData} height={200} /> :
                 <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">Complete more interviews to see trend</div>}
             </CardContent>
           </Card>
@@ -507,9 +559,9 @@ export default function InterviewPage() {
         {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-5 py-2.5 border-b border-white/8 bg-[#0d1120]/90 backdrop-blur shrink-0">
           <div className="flex items-center gap-3">
-            <button onClick={resetInterview} title="End Interview"
-              className="flex items-center gap-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 px-2.5 py-1.5 text-xs text-red-400 transition-all">
-              <RotateCcw className="h-3 w-3" /> End
+            <button onClick={() => setShowFinishConfirm(true)} title="End Interview Early"
+              className="flex items-center gap-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 px-2.5 py-1.5 text-xs text-amber-400 transition-all">
+              <Zap className="h-3 w-3" /> End Early
             </button>
             <div>
               <p className="text-sm font-bold text-white leading-tight">{targetRole}</p>
@@ -762,6 +814,51 @@ export default function InterviewPage() {
             </div>
           </div>
         </div>
+
+        {/* ── End Early Confirm Overlay ─────────────────────────────────── */}
+        {showFinishConfirm && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="w-full max-w-sm rounded-2xl bg-[#0d1120] border border-white/10 shadow-2xl p-6 space-y-5 mx-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
+                  <Zap className="h-5 w-5 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">End Interview Early?</h3>
+                  <p className="text-xs text-white/40 mt-0.5">
+                    {questionScores.length > 0
+                      ? `You've answered ${questionScores.length} of ${totalQuestions} question${totalQuestions !== 1 ? 's' : ''}.`
+                      : "You haven't answered any questions yet."}
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm text-white/60 leading-relaxed">
+                {questionScores.length > 0
+                  ? "Your results will be calculated from answered questions and saved to your history."
+                  : "No questions scored yet — you'll receive a partial result."}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowFinishConfirm(false)}
+                  disabled={finishingEarly}
+                  className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 transition-all disabled:opacity-40"
+                >
+                  Continue Interview
+                </button>
+                <button
+                  onClick={() => void finishEarly()}
+                  disabled={finishingEarly}
+                  id="confirm-end-early"
+                  className="flex-1 rounded-xl bg-amber-500 hover:bg-amber-400 px-4 py-2.5 text-sm font-bold text-white transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {finishingEarly
+                    ? <><Loader2 className="h-4 w-4 animate-spin" />Calculating…</>
+                    : <><Zap className="h-4 w-4" />Get My Results</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -811,6 +908,7 @@ export default function InterviewPage() {
                 <div className="grid grid-cols-2 gap-3">
                   {COMPANY_OPTIONS.map(({ id, label, desc, icon: Icon }) => (
                     <button key={id} onClick={() => setCompanyType(id)}
+                      suppressHydrationWarning
                       className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-all ${companyType === id ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border hover:bg-muted/50'}`}
                     >
                       <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${companyType === id ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
@@ -834,6 +932,7 @@ export default function InterviewPage() {
               <div className="space-y-3">
                 {TYPE_OPTIONS.map(({ id, label, desc, icon: Icon }) => (
                   <button key={id} onClick={() => setInterviewType(id)}
+                    suppressHydrationWarning
                     className={`w-full flex items-center gap-4 rounded-xl border p-4 text-left transition-all ${interviewType === id ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border hover:bg-muted/50'}`}
                   >
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${interviewType === id ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>

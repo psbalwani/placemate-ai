@@ -310,3 +310,203 @@ export async function getCohortStats(instituteId: string) {
   ]);
   return { avgScores: avgScores[0], skillCounts, topRoles };
 }
+
+// ─── Drive queries ──────────────────────────────────────────────────────────
+
+export async function createDrive(data: {
+  instituteId: string;
+  createdBy: string;
+  companyName: string;
+  roleTitle: string;
+  jdText: string;
+  parsedJdJson: Record<string, unknown>;
+  eligibilityJson: Record<string, unknown>;
+  scoringConfigJson: Record<string, unknown>;
+  ctc?: string;
+  location?: string;
+  driveDate?: string | null;
+}) {
+  const rows = await sql`
+    INSERT INTO drives (
+      institute_id, created_by, company_name, role_title, jd_text,
+      parsed_jd_json, eligibility_json, scoring_config_json,
+      ctc, location, drive_date
+    ) VALUES (
+      ${data.instituteId}, ${data.createdBy}, ${data.companyName}, ${data.roleTitle}, ${data.jdText},
+      ${JSON.stringify(data.parsedJdJson)}::jsonb, ${JSON.stringify(data.eligibilityJson)}::jsonb,
+      ${JSON.stringify(data.scoringConfigJson)}::jsonb,
+      ${data.ctc ?? null}, ${data.location ?? null}, ${data.driveDate ?? null}
+    )
+    RETURNING *
+  `;
+  return rows[0];
+}
+
+export async function listDrives(instituteId: string) {
+  const rows = await sql`
+    SELECT d.*,
+      COUNT(ds.id) as shortlist_count,
+      COUNT(CASE WHEN ds.status = 'invited' THEN 1 END) as invited_count
+    FROM drives d
+    LEFT JOIN drive_shortlists ds ON ds.drive_id = d.id
+    WHERE d.institute_id = ${instituteId}
+    GROUP BY d.id
+    ORDER BY d.created_at DESC
+  `;
+  return rows;
+}
+
+export async function getDriveById(driveId: string, instituteId: string) {
+  const rows = await sql`
+    SELECT * FROM drives WHERE id = ${driveId} AND institute_id = ${instituteId} LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+
+export async function updateDriveEligibility(
+  driveId: string,
+  instituteId: string,
+  eligibilityJson: Record<string, unknown>,
+  scoringConfigJson: Record<string, unknown>,
+  status?: string
+) {
+  const rows = await sql`
+    UPDATE drives SET
+      eligibility_json = ${JSON.stringify(eligibilityJson)}::jsonb,
+      scoring_config_json = ${JSON.stringify(scoringConfigJson)}::jsonb,
+      status = COALESCE(${status ?? null}, status)
+    WHERE id = ${driveId} AND institute_id = ${instituteId}
+    RETURNING *
+  `;
+  return rows[0];
+}
+
+// ─── Shortlist queries ──────────────────────────────────────────────────────
+
+export async function getEligibleStudents(
+  instituteId: string,
+  eligibility: { branches?: string[]; min_cgpa_band?: string; batch_year?: string }
+) {
+  // Fetch all students in this institute with their latest scores
+  const rows = await sql`
+    SELECT
+      u.id, u.full_name, u.email,
+      p.branch, p.semester, p.cgpa_band, p.skills_json, p.target_role, p.batch,
+      rf.ats_score,
+      mi.overall_score as interview_score
+    FROM users u
+    JOIN profiles p ON p.user_id = u.id
+    LEFT JOIN LATERAL (
+      SELECT ats_score FROM resume_feedback
+      WHERE user_id = u.id ORDER BY created_at DESC LIMIT 1
+    ) rf ON true
+    LEFT JOIN LATERAL (
+      SELECT overall_score FROM mock_interviews
+      WHERE user_id = u.id AND status = 'completed'
+      ORDER BY created_at DESC LIMIT 1
+    ) mi ON true
+    WHERE u.institute_id = ${instituteId} AND u.role = 'student'
+    ORDER BY u.full_name ASC
+  `;
+  return rows as Array<{
+    id: string; full_name: string; email: string;
+    branch: string; semester: string; cgpa_band: string;
+    skills_json: Array<{ name: string; level: number }>;
+    target_role: string | null; batch: string | null;
+    ats_score: number | null; interview_score: number | null;
+  }>;
+}
+
+export async function upsertShortlistEntry(data: {
+  driveId: string;
+  studentUserId: string;
+  driveScore: number;
+  reasonsJson: string[];
+  status?: string;
+}) {
+  const rows = await sql`
+    INSERT INTO drive_shortlists (drive_id, student_user_id, drive_score, reasons_json, status)
+    VALUES (
+      ${data.driveId}, ${data.studentUserId}, ${data.driveScore},
+      ${JSON.stringify(data.reasonsJson)}::jsonb, ${data.status ?? 'pending'}
+    )
+    ON CONFLICT (drive_id, student_user_id) DO UPDATE SET
+      drive_score = EXCLUDED.drive_score,
+      reasons_json = EXCLUDED.reasons_json
+    RETURNING *
+  `;
+  return rows[0];
+}
+
+export async function getDriveShortlist(driveId: string) {
+  const rows = await sql`
+    SELECT
+      ds.*,
+      u.full_name, u.email,
+      p.branch, p.cgpa_band, p.semester, p.target_role
+    FROM drive_shortlists ds
+    JOIN users u ON u.id = ds.student_user_id
+    JOIN profiles p ON p.user_id = ds.student_user_id
+    WHERE ds.drive_id = ${driveId}
+    ORDER BY ds.drive_score DESC
+  `;
+  return rows;
+}
+
+export async function updateShortlistStatus(
+  driveId: string,
+  studentUserId: string,
+  status: string
+) {
+  const rows = await sql`
+    UPDATE drive_shortlists SET status = ${status}
+    WHERE drive_id = ${driveId} AND student_user_id = ${studentUserId}
+    RETURNING *
+  `;
+  return rows[0];
+}
+
+// ─── Training plan queries ──────────────────────────────────────────────────
+
+export async function saveTrainingPlan(data: {
+  instituteId: string;
+  createdBy: string;
+  title?: string;
+  filtersJson: Record<string, unknown>;
+  cohortStatsJson: Record<string, unknown>;
+  planJson: unknown[];
+}) {
+  const rows = await sql`
+    INSERT INTO tpo_training_plans (
+      institute_id, created_by, filters_json, cohort_stats_json, plan_json
+    ) VALUES (
+      ${data.instituteId}, ${data.createdBy},
+      ${JSON.stringify(data.filtersJson)}::jsonb,
+      ${JSON.stringify(data.cohortStatsJson)}::jsonb,
+      ${JSON.stringify(data.planJson)}::jsonb
+    )
+    RETURNING *
+  `;
+  return rows[0];
+}
+
+export async function listTrainingPlans(instituteId: string) {
+  const rows = await sql`
+    SELECT id, filters_json, cohort_stats_json, created_at
+    FROM tpo_training_plans
+    WHERE institute_id = ${instituteId}
+    ORDER BY created_at DESC
+    LIMIT 10
+  `;
+  return rows;
+}
+
+export async function getTrainingPlanById(planId: string, instituteId: string) {
+  const rows = await sql`
+    SELECT * FROM tpo_training_plans
+    WHERE id = ${planId} AND institute_id = ${instituteId}
+    LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+

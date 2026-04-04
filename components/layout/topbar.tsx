@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { Bell, Menu, X, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { AppSidebar } from './app-sidebar';
-import { cn } from '@/lib/utils';
+import { SwitchMode } from '@/components/ui/switch-mode';
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -37,6 +37,7 @@ export function Topbar({ role, userName, userEmail }: TopbarProps) {
           className="flex items-center gap-2 rounded-lg p-2 text-muted-foreground hover:bg-muted lg:hidden"
           onClick={() => setMobileOpen(true)}
           id="mobile-menu-open"
+          suppressHydrationWarning
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -50,8 +51,23 @@ export function Topbar({ role, userName, userEmail }: TopbarProps) {
         </div>
 
         {/* Right actions */}
-        <div className="flex items-center gap-2">
-          <button className="relative rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+        <div className="flex items-center gap-3">
+          {/* Theme toggle */}
+          <SwitchMode
+            width={60}
+            height={30}
+            darkColor="#111827"
+            lightColor="#F3F4F6"
+            knobDarkColor="#1f2937"
+            knobLightColor="#ffffff"
+            borderDarkColor="#374151"
+            borderLightColor="#D1D5DB"
+          />
+
+          <button
+            className="relative rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            suppressHydrationWarning
+          >
             <Bell className="h-5 w-5" />
             <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
           </button>

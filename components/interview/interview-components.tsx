@@ -1,6 +1,6 @@
 'use client';
 
-import { Star, Bot, User, Loader2 } from 'lucide-react';
+import { Star, Bot, User, Loader2, Trophy, ThumbsUp, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -148,7 +148,11 @@ export function InterviewResults({
         <p className="mt-2 text-muted-foreground">{result.summary}</p>
         <div className="mt-3 inline-flex items-center gap-2">
           <Badge variant={result.score >= 70 ? 'default' : 'secondary'} className="text-sm px-3 py-1">
-            {result.score >= 75 ? '🎉 Excellent' : result.score >= 55 ? '👍 Good Job' : '📈 Keep Practicing'}
+            {result.score >= 75
+              ? <span className="flex items-center gap-1.5"><Trophy className="h-3.5 w-3.5" /> Excellent</span>
+              : result.score >= 55
+              ? <span className="flex items-center gap-1.5"><ThumbsUp className="h-3.5 w-3.5" /> Good Job</span>
+              : <span className="flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5" /> Keep Practicing</span>}
           </Badge>
         </div>
       </div>

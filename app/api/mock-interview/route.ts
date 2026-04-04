@@ -115,7 +115,10 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      const updatedScores = aiResponse.previous_score > 0
+      // Record score when: score >= 1 AND question type is main or transition (not followup)
+      const qType = aiResponse.question_type;
+      const shouldScore = (aiResponse.previous_score ?? 0) >= 1 && qType !== 'followup';
+      const updatedScores = shouldScore
         ? [...scores, {
             question_index: scores.length,
             question: (transcript as { role: string; content: string }[]).filter((t) => t.role === 'interviewer').pop()?.content ?? '',
@@ -190,6 +193,70 @@ export async function POST(request: NextRequest) {
       const interview = await getInterview(interview_id, userId);
       if (!interview) return NextResponse.json({ error: 'Not found' }, { status: 404 });
       return NextResponse.json({ interview });
+    }
+
+    // ── FINISH EARLY ───────────────────────────────────────────
+    if (action === 'finish_early') {
+      const { interview_id } = body;
+      const interview = await getInterview(interview_id, userId);
+      if (!interview) return NextResponse.json({ error: 'Interview not found' }, { status: 404 });
+      if (interview.status === 'completed') {
+        // Already done — just return what we have
+        return NextResponse.json({ success: true, overall_result: {
+          score: interview.overall_score ?? 0,
+          summary: interview.summary ?? 'Interview already completed.',
+          strengths: [], weaknesses: [],
+        }});
+      }
+
+      const scores = (interview.question_scores_json as Array<{ score: number; feedback: string }>) ?? [];
+
+      // Compute overall from whatever scores we have
+      const overallScore = scores.length > 0
+        ? Math.round(scores.reduce((sum, s) => sum + (s.score ?? 0), 0) / scores.length * 10)
+        : 0;
+
+      // Build a brief AI summary from available data
+      const { generateText } = await import('@/lib/ai/client');
+      const scoreSummary = scores.map((s, i) => `Q${i + 1}: ${s.score}/10 — ${s.feedback ?? ''}`).join('\n');
+      let summary = 'Interview ended early. Limited data available for full analysis.';
+      let strengths: string[] = ['Completed partial interview'];
+      let weaknesses: string[] = ['Interview was not completed fully'];
+
+      if (scores.length > 0) {
+        try {
+          const aiSummary = await generateText([{
+            role: 'user',
+            content: `A student ended their mock interview early for the role of "${interview.target_role}".
+They answered ${scores.length} question(s).
+
+Score breakdown:
+${scoreSummary}
+
+Overall score: ${overallScore}/100
+
+Write a brief 2-sentence performance summary, then list 2 strengths and 2 areas to improve.
+Output ONLY valid JSON: { "summary": "...", "strengths": ["...", "..."], "weaknesses": ["...", "..."] }`,
+          }]);
+          const parsed = JSON.parse(aiSummary.replace(/```json?|```/g, '').trim());
+          summary = parsed.summary ?? summary;
+          strengths = parsed.strengths ?? strengths;
+          weaknesses = parsed.weaknesses ?? weaknesses;
+        } catch { /* use defaults */ }
+      }
+
+      const overall_result = { score: overallScore, summary, strengths, weaknesses };
+
+      await updateInterview(interview_id, {
+        status: 'completed',
+        overall_score: overallScore,
+        summary,
+        completed_at: new Date().toISOString(),
+      });
+
+      await logActivity(userId, 'interview_completed', { interview_id, score: overallScore, early: true });
+
+      return NextResponse.json({ success: true, overall_result });
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
